@@ -31,14 +31,14 @@ df_in <- df_in %>%
 
 # doctors only 
 df_doctor_wide <- df_full_referrals %>%
-  select(doctor, starts_with("doc_"), total_pcp_patients) %>%  # include doctor totals
+  select(doctor, starts_with("doc_"), total_pcp_patients, Year) %>%  # include doctor totals
   rename_with(~ gsub("^doc_", "", .x), .cols = starts_with("doc_")) %>%
   rename(npi = doctor,total_patients = total_pcp_patients) %>% 
   distinct(npi, .keep_all = TRUE)
 
 # specialists only 
 df_spec_wide <- df_full_referrals %>%
-  select(specialist, starts_with("spec_"), total_spec_patients) %>%  # include specialist totals
+  select(specialist, starts_with("spec_"), total_spec_patients, Year) %>%  # include specialist totals
   rename_with(~ gsub("^spec_", "", .x), .cols = starts_with("spec_")) %>%
   rename(npi = specialist, total_patients = total_spec_patients) %>% 
   distinct(npi, .keep_all = TRUE)
@@ -86,9 +86,9 @@ summary_table <- df_providers  %>%
   group_by(include) %>%
   summarize(
     obs = sum(n = n(), na.rm = TRUE),
-    mean_age = mean( 2025 - birth, na.rm = TRUE),
-    #sd_age = sd( 2025 - birth, na.rm = TRUE),
-    mean_exp = mean(2025 - grad_year, na.rm = TRUE), 
+    mean_age = mean(Year - birth, na.rm = TRUE),
+    #sd_age = sd( Year - birth, na.rm = TRUE),
+    mean_exp = mean(Year - grad_year, na.rm = TRUE), 
     mean_qual = mean(qual, na.rm = TRUE), 
     #sd_qual = sd(qual, na.rm = TRUE),
 )
