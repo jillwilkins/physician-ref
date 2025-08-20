@@ -2,7 +2,7 @@
 ## Title:         Analysis of Discordant and Concordant Pairs
 ## Author:        Jillian Wilkins
 ## Date Created:  8/11/2025
-## Date Edited:   8/11/2025
+## Date Edited:   8/20/2025
 
 
 colnames(df_logit_twfe)
@@ -82,101 +82,55 @@ df_providers %>%
 #---------------------------------------------# 
 # df_providers has all npis and if they are included or not in the estimation 
 # Summarize by treatment group
-summary_table <- df_providers  %>%
-  group_by(include) %>%
-  summarize(
-    obs = sum(n = n(), na.rm = TRUE),
-    mean_age = mean(Year - birth, na.rm = TRUE),
-    #sd_age = sd( Year - birth, na.rm = TRUE),
-    mean_exp = mean(Year - grad_year, na.rm = TRUE), 
-    mean_qual = mean(qual, na.rm = TRUE), 
-    #sd_qual = sd(qual, na.rm = TRUE),
-)
 
-# role percentages 
-role_pct <- df_providers %>%
-  group_by(include, role) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(include) %>%
-  mutate(pct = n / sum(n)) %>%
-  select(-n) %>%
-  pivot_wider(names_from = role, values_from = pct, values_fill = 0)
+make_summary <- function(df) {
+  df %>%
+    group_by(include) %>%
+    summarise(
+      "Mean Age" = mean(Year - birth, na.rm = TRUE),
+      "Mean Years of Experience" = mean(Year - grad_year, na.rm = TRUE),
+      "Mean Specialist Quality" = mean(qual, na.rm = TRUE),
+      "Percent Male"  = mean(sex == "M", na.rm = TRUE),
+      "Percent White" = mean(race == "white", na.rm = TRUE),
+      "Percent Black" = mean(race == "black", na.rm = TRUE),
+      "Percent Hispanic" = mean(race == "hispanic", na.rm = TRUE),
+      "Percent Asian" = mean(race == "asian", na.rm = TRUE),
+      "Percent Specialist" = mean(role == "specialist", na.rm = TRUE),
+      "Percent PCP" = mean(role == "doctor", na.rm = TRUE),
+      "Observations" = n_distinct(npi),
+      .groups = "drop"
+    ) %>%
+    pivot_longer(
+      cols = -include,            
+      names_to = "variable",
+      values_to = "value"
+    ) %>%
+    pivot_wider(
+      names_from = include,
+      values_from = value,
+      names_prefix = "include_"
+    ) %>%
+    rename(
+      `Not Included` = include_0,
+      `Included`     = include_1
+    )
+}
 
-# Race percentages
-race_pct <- df_providers %>%
-  group_by(include, race) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(include) %>%
-  mutate(pct = n / sum(n)) %>%
-  select(-n) %>%
-  pivot_wider(names_from = race, values_from = pct, values_fill = 0)
-
-# gender pct 
-sex_pct <- df_providers %>%
-  group_by(include, sex) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(include) %>%
-  mutate(pct = n / sum(n)) %>%
-  select(-n) %>%
-  pivot_wider(names_from = sex, values_from = pct, values_fill = 0) %>%
-  rename(pct_male = M, pct_female = F)
-
-summary_table <- summary_table %>%
-  left_join(race_pct, by = "include") %>%
-  left_join(sex_pct, by = "include") %>%
-  left_join(role_pct, by = "include")
-
-View(summary_table)
-
-# make summary table for la tex 
-# variables into rows
-summary_table_long <- summary_table %>%
-  pivot_longer(
-    cols = -include,             # keep 'include' separate
-    names_to = "variable",
-    values_to = "value"
-  )
-
-# make included the columns
-summary_table_wide <- summary_table_long %>%
-  pivot_wider(
-    names_from = include,
-    values_from = value,
-    names_prefix = "included_"
-  )
-
-# variable labels
-var_labels <- c(
-  mean_age = "Mean Age",
-  mean_exp = "Mean Years of Experience",
-  mean_qual = "Mean Specialist Quality",
-  pct_male = "Percent Male",
-  white = "Percent White",
-  black = "Percent Black",
-  asian = "Percent Asian",
-  hispanic = "Percent Hispanic",
-  obs = "Observations"
-)
-
-# rename column title 
-summary_table_wide <- summary_table_wide %>%
-  rename(
-    `Not Included` = included_0,
-    `Included`     = included_1
-  )
-
-# filter columns we dont want 
-summary_table_wide <- summary_table_wide %>%
-  filter(!variable %in% c("other", "NA.x", "NA.y", "NA", "pct_female", "doctor", "specialist")) %>%
-  filter(!is.na(variable))
-
-# order rows and apply labels 
-summary_table_wide <- summary_table_wide %>%
-  mutate(variable = recode(variable, !!!var_labels)) %>%
-  mutate(variable = factor(variable, levels = var_labels)) %>%
-  arrange(variable)
-
-summary_table_wide %>%
+# la tex output 
+# all providers
+sum_table_all <- make_summary(df_providers)
+sum_table_all %>%
   kable(format = "latex", booktabs = TRUE, digits = 2) %>%
   kable_styling(latex_options = c("hold_position", "scale_down"))
 
+# doctors only
+sum_table_doctors <- make_summary(df_providers %>% filter(role == "doctor"))
+sum_table_doctors %>%
+  kable(format = "latex", booktabs = TRUE, digits = 2) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"))
+
+# specialists only
+sum_table_specialists <- make_summary(df_providers %>% filter(role == "specialist"))
+sum_table_specialists %>%
+  kable(format = "latex", booktabs = TRUE, digits = 2) %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"))
