@@ -1,24 +1,9 @@
 # Meta --------------------------------------------------------------------
-## Title:         Analysis of Discordant and Concordant Pairs
+## Title:         Analysis of Included and Not Included Pairs
 ## Author:        Jillian Wilkins
 ## Date Created:  8/11/2025
-## Date Edited:   8/20/2025
+## Date Edited:   8/28/2025
 
-
-colnames(df_logit_twfe)
-colnames(df_full_referrals)
-colnames(df_initial_referrals)
-str(df_full_referrals)
-library(dplyr)
-
-doctor_ref_counts <- df_full_referrals %>%
-  group_by(doctor, specialist) %>%
-  summarise(referrals = n(), .groups = "drop") %>%
-  group_by(doctor) %>%
-  summarise(num_ref = sum(referrals), .groups = "drop") %>%
-  rename(npi = doctor)
-
-View(doctor_ref_counts)
 
 # -------------------------------------------------------# 
 # get a long list of all providers in the estimation
@@ -40,11 +25,21 @@ df_in <- df_in %>%
       TRUE ~ role)) %>%
   distinct(npi, role, .keep_all = TRUE)
 
+
+# count number of unique referrals 
+df_initial_referrals <- df_initial_referrals %>%
+  group_by(doctor, specialist) %>%
+  mutate(referrals = n()) %>% 
+  ungroup() %>%
+  group_by(doctor) %>%
+  mutate(num_ref = sum(referrals)) %>%
+  ungroup()
+
 # doctors only 
 df_doctor_wide <- df_initial_referrals %>%
-  select(doctor, starts_with("doc_"), total_pcp_patients, Year, num_ref) %>%  
+  select(doctor, starts_with("doc_"), total_pcp_patients, Year, num_ref, spec_qual) %>%  
   rename_with(~ gsub("^doc_", "", .x), .cols = starts_with("doc_")) %>%
-  rename(npi = doctor,total_patients = total_pcp_patients) %>% 
+  rename(npi = doctor,total_patients = total_pcp_patients, qual = spec_qual) %>% 
   distinct(npi, .keep_all = TRUE)
 
 # specialists only 
@@ -54,39 +49,20 @@ df_spec_wide <- df_initial_referrals %>%
   rename(npi = specialist, total_patients = total_spec_patients) %>% 
   distinct(npi, .keep_all = TRUE)
 
-colnames(df_spec_wide)
-colnames(df_doctor_wide)
-#NOTE: what is spec?? I think that its the doctor specialty. 
-
-# Add missing column 'qual' to doctors
-if(!"qual" %in% names(df_doctor_wide)) {
-  df_doctor_wide <- df_doctor_wide %>%
-    mutate(qual = NA)}
-
-# Ensure spec column is character in both
-df_doctor_wide <- df_doctor_wide %>%
-  mutate(spec = as.character(spec))
-
-df_spec_wide <- df_spec_wide %>%
-  mutate(spec = as.character(spec))
 
 #bind together 
 df_providers <- bind_rows(
-  df_doctor_wide %>% mutate(role = "doctor"),
-  df_spec_wide   %>% mutate(role = "specialist"))
+  df_doctor_wide %>% mutate(role = "doctor", qual = NA, spec = as.character(spec)),
+  df_spec_wide   %>% mutate(role = "specialist", spec = as.character(spec)))
+
 
 # add df_in "include" when that NPI is in the estimation. 
 df_providers <- df_providers %>%
   left_join(df_in %>% select(npi, include), by = "npi") %>%
-  mutate(include = ifelse(is.na(include), 0, include)) %>%
-  left_join(doctor_ref_counts, by = "npi")
+  mutate(include = ifelse(is.na(include), 0, include))
 
-df_providers <- df_providers %>%
-  mutate(include = as.numeric(unlist(include)))
-
-#---------------------------------------------# 
-# df_providers has all npis and if they are included or not in the estimation 
-# Summarize by treatment group
+#---------------------------------------------#  
+# Summarize by inclusion and role 
 
 make_summary <- function(df) {
   df %>%
@@ -112,10 +88,10 @@ make_summary <- function(df) {
       values_to = "value"
     ) %>%
     mutate(colname = case_when(
-      include == 1 & role == "doctor"     ~ "Included PCP",
-      include == 0 & role == "doctor"     ~ "Not Included PCP",
-      include == 1 & role == "specialist" ~ "Included Specialist",
-      include == 0 & role == "specialist" ~ "Not Included Specialist"
+      include == 1 & role == "doctor"     ~ "Included PCPs",
+      include == 0 & role == "doctor"     ~ "Not Included PCPs",
+      include == 1 & role == "specialist" ~ "Included Specialists",
+      include == 0 & role == "specialist" ~ "Not Included Specialists"
     )) %>%
     select(-include, -role) %>%
     pivot_wider(
@@ -124,26 +100,17 @@ make_summary <- function(df) {
     ) 
 }
 
-
-
 # la tex output 
-# all providers
 sum_table <- make_summary(df_providers)
 sum_table <- sum_table %>%
-  select(
-    variable,
-    `Included PCP`,
-    `Not Included PCP`,
-    `Included Specialist`,
-    `Not Included Specialist`
-  )
+  select(variable,`Included PCP`,`Not Included PCP`,`Included Specialist`,
+    `Not Included Specialist`)
 
 sum_table %>%
   kable(
     format = "latex",
     booktabs = TRUE,
-    digits = 2,  # numeric formatting preserved
-    na = ""      # NA will appear as blank
-  ) %>%
+    digits = 2,  
+    na = "" ) %>%
   kable_styling(latex_options = c("hold_position", "scale_down"))
 
