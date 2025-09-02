@@ -52,7 +52,7 @@ df_providers <- bind_rows(
   df_spec_wide   %>% mutate(role = "specialist", spec = as.character(spec)))
 
 
-# add df_in "include" when that NPI is in the estimation and doctor_ref_counts
+# add df_in "include" when that NPI is in the estimation and referral_counts
 df_providers <- df_providers %>%
   left_join(df_in %>% select(npi, include), by = "npi") %>% 
   mutate(include = ifelse(is.na(include), 0, include)) %>%
