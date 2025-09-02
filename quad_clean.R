@@ -27,13 +27,9 @@ df_in <- df_in %>%
 
 
 # count number of unique referrals 
-df_initial_referrals <- df_initial_referrals %>%
-  group_by(doctor, specialist) %>%
-  mutate(referrals = n()) %>% 
-  ungroup() %>%
-  group_by(doctor) %>%
-  mutate(num_ref = sum(referrals)) %>%
-  ungroup()
+doctor_ref_counts <- df_full_referrals %>%
+  group_by(npi = doctor) %>%
+  summarise(deg = n_distinct(specialist), .groups = "drop")
 
 # doctors only 
 df_doctor_wide <- df_initial_referrals %>%
