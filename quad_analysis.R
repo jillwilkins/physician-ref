@@ -12,11 +12,10 @@ str(df_full_referrals)
 library(dplyr)
 
 doctor_ref_counts <- df_full_referrals %>%
-  group_by(doctor, specialist) %>%
-  summarise(referrals = n(), .groups = "drop") %>%
-  group_by(doctor) %>%
-  summarise(num_ref = sum(referrals), .groups = "drop") %>%
-  rename(npi = doctor)
+  group_by(npi = doctor) %>%
+  summarise(deg = n_distinct(specialist), .groups = "drop")
+
+
 
 View(doctor_ref_counts)
 
@@ -124,10 +123,7 @@ make_summary <- function(df) {
     ) 
 }
 
-
-
 # la tex output 
-# all providers
 sum_table <- make_summary(df_providers)
 sum_table <- sum_table %>%
   select(
@@ -142,7 +138,7 @@ sum_table %>%
   kable(
     format = "latex",
     booktabs = TRUE,
-    digits = 2,  # numeric formatting preserved
+    digits = 2,  
     na = ""      # NA will appear as blank
   ) %>%
   kable_styling(latex_options = c("hold_position", "scale_down"))

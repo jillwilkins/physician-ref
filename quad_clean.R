@@ -2,7 +2,7 @@
 ## Title:         Analysis of Included and Not Included Pairs
 ## Author:        Jillian Wilkins
 ## Date Created:  8/11/2025
-## Date Edited:   8/28/2025
+## Date Edited:   9/1/2025
 
 
 # -------------------------------------------------------# 
@@ -63,6 +63,7 @@ df_providers <- df_providers %>%
 
 #---------------------------------------------#  
 # Summarize by inclusion and role 
+options(knitr.kable.NA = '')
 
 make_summary <- function(df) {
   df %>%
@@ -77,11 +78,11 @@ make_summary <- function(df) {
       "Percent Hispanic" = mean(race == "hispanic", na.rm = TRUE),
       "Percent Asian" = mean(race == "asian", na.rm = TRUE),
       "Total Patients" = mean(total_patients, na.rm = TRUE),
-      "Unique Referrals Made" =mean(num_ref, na.rm = TRUE),
+      "Mean Referrals Made" =mean(num_ref, na.rm = TRUE),
       "Observations" = n_distinct(npi),
       .groups = "drop"
     ) %>% 
-    mutate(across(where(is.numeric), ~ ifelse(is.nan(.), NA_real_, .))) %>%
+    mutate(across(where(is.numeric), ~ ifelse(is.nan(.) | is.infinite(.), NA_real_, .))) %>%
     pivot_longer( # nolint
       cols = -c(include, role),
       names_to = "variable",
@@ -103,8 +104,8 @@ make_summary <- function(df) {
 # la tex output 
 sum_table <- make_summary(df_providers)
 sum_table <- sum_table %>%
-  select(variable,`Included PCP`,`Not Included PCP`,`Included Specialist`,
-    `Not Included Specialist`)
+  select(variable,`Included PCPs`,`Not Included PCPs`,`Included Specialists`,
+    `Not Included Specialists`)
 
 sum_table %>%
   kable(
