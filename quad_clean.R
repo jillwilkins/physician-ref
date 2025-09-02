@@ -74,7 +74,7 @@ make_summary <- function(df) {
       "Percent Hispanic" = mean(race == "hispanic", na.rm = TRUE),
       "Percent Asian" = mean(race == "asian", na.rm = TRUE),
       "Total Patients" = mean(total_patients, na.rm = TRUE),
-      "Mean Referrals Made" =mean(num_ref, na.rm = TRUE),
+      "Unique Referrals Made" =mean(num_ref, na.rm = TRUE),
       "Observations" = n_distinct(npi),
       .groups = "drop"
     ) %>% 
